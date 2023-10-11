@@ -1,1 +1,1 @@
-"# Bazy-Danych-Przestrzennych" 
+Ćwiczenia z baz danych przestrzennych 
