@@ -74,9 +74,9 @@ WHERE bb.nazwa='BuildingB' AND bc.nazwa='BuildingC';
 
 --g) Wybierz te budynki, których centroid (ST_Centroid) znajduje się powyżej drogi
 --o nazwie RoadX.
-SELECT b.nazwa, b.geometria FROM mapa.budynki b, mapa.drogi r
-WHERE ST_Y(ST_Centroid(b.geometria)) > ST_Y(ST_Centroid(r.geometria))
-AND r.nazwa = 'RoadX';
+SELECT b.nazwa, b.geometria FROM mapa.budynki b, mapa.drogi d
+WHERE ST_Y(ST_Centroid(b.geometria)) > ST_Y(ST_Centroid(d.geometria))
+AND d.nazwa = 'RoadX';
 
 --8. Oblicz pole powierzchni tych części budynku BuildingC i poligonu
 --o współrzędnych (4 7, 6 7, 6 8, 4 8, 4 7), które nie są wspólne dla tych dwóch
