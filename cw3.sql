@@ -6,8 +6,10 @@ create extension postgis;
 
 SELECT p.* INTO TableB
 FROM popp p, majrivers r
-ON ST_Intersects(ST_Buffer(r.geom, 1000), p.geom)
-WHERE p.f_codedesc='Building';
+WHERE 
+p.f_codedesc='Building' 
+AND
+ST_DWithin(p.geom, r.geom, 1000);
 
 SELECT COUNT(f_codedesc) FROM tableb;
 
@@ -44,7 +46,7 @@ WHERE name='airportB'
 
 
 --6) Wyznacz pole powierzchni obszaru, który oddalony jest mniej niż 1000 jednostek od najkrótszej
--- linii łączącej jezoro o nazwie ‘Iliamna Lake’ i lotnisko o nazwie „AMBLER”
+-- linii łączącej jezioro o nazwie ‘Iliamna Lake’ i lotnisko o nazwie „AMBLER”
 
 SELECT ST_Area(ST_Buffer((ST_ShortestLine((SELECT geom FROM lakes WHERE names='Iliamna Lake'),
 										 (SELECT geom FROM airports WHERE name='AMBLER'))), 1000))
@@ -53,7 +55,7 @@ SELECT ST_Area(ST_Buffer((ST_ShortestLine((SELECT geom FROM lakes WHERE names='I
 --7)Napisz zapytanie, które zwróci sumaryczne pole powierzchni poligonów reprezentujących
 -- poszczególne typy drzew znajdujących się na obszarze tundry i bagien (swamps).
 
-SELECT vegdesc, SUM(ST_Area(tr.geom)) AS area
+SELECT vegdesc AS tree, SUM(ST_Area(tr.geom)) AS area
 FROM trees tr, tundra tu, swamp s
 WHERE
 ST_Within(tr.geom, tu.geom)
