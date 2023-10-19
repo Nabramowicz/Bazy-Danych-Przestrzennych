@@ -5,8 +5,7 @@ create extension postgis;
 -- kryterium zapisz do osobnej tabeli tableB.
 
 SELECT p.* INTO TableB
-FROM popp p
-JOIN majrivers r
+FROM popp p, majrivers r
 ON ST_Intersects(ST_Buffer(r.geom, 1000), p.geom)
 WHERE p.f_codedesc='Building';
 
