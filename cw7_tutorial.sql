@@ -15,6 +15,8 @@ add column rid SERIAL PRIMARY KEY;
 CREATE INDEX idx_intersects_rast_gist ON abramowicz.intersects
 USING gist (ST_ConvexHull(rast));
 
+SELECT * FROM abramowicz.intersects;
+
 -- schema::name table_name::name raster_column::name
 SELECT AddRasterConstraints('abramowicz'::name,
 'intersects'::name,'rast'::name);
@@ -24,6 +26,7 @@ CREATE TABLE abramowicz.clip AS
 SELECT ST_Clip(a.rast, b.geom, true), b.municipality
 FROM rasters.dem AS a, vectors.porto_parishes AS b
 WHERE ST_Intersects(a.rast, b.geom) AND b.municipality like 'PORTO';
+
 
 --ST_Union
 CREATE TABLE abramowicz.union AS
@@ -76,8 +79,7 @@ WHERE a.municipality ilike 'porto';
 --ST_Intersection
 create table abramowicz.intersection as
 SELECT
-a.rid,(ST_Intersection(b.geom,a.rast)).geom,(ST_Intersection(b.geom,a.rast)
-).val
+a.rid,(ST_Intersection(b.geom,a.rast)).geom,(ST_Intersection(b.geom,a.rast)).val
 FROM rasters.landsat8 AS a, vectors.porto_parishes AS b
 WHERE b.parish ilike 'paranhos' and ST_Intersects(b.geom,a.rast);
 
@@ -85,8 +87,7 @@ WHERE b.parish ilike 'paranhos' and ST_Intersects(b.geom,a.rast);
 --ST_DumpAsPolygons
 CREATE TABLE abramowicz.dumppolygons AS
 SELECT
-a.rid,(ST_DumpAsPolygons(ST_Clip(a.rast,b.geom))).geom,(ST_DumpAsPolygons(S
-T_Clip(a.rast,b.geom))).val
+a.rid,(ST_DumpAsPolygons(ST_Clip(a.rast,b.geom))).geom,(ST_DumpAsPolygons(ST_Clip(a.rast,b.geom))).val
 FROM rasters.landsat8 AS a, vectors.porto_parishes AS b
 WHERE b.parish ilike 'paranhos' and ST_Intersects(b.geom,a.rast);
 
@@ -113,8 +114,7 @@ FROM abramowicz.paranhos_dem AS a;
 
 --st_reclass
 CREATE TABLE abramowicz.paranhos_slope_reclass AS
-SELECT a.rid,ST_Reclass(a.rast,1,']0-15]:1, (15-30]:2, (30-9999:3',
-'32BF',0)
+SELECT a.rid,ST_Reclass(a.rast,1,']0-15]:1, (15-30]:2, (30-9999:3','32BF',0)
 FROM abramowicz.paranhos_slope AS a;
 
 --st_summarystats
@@ -134,8 +134,7 @@ SELECT (stats).min,(stats).max,(stats).mean FROM t;
 
 --ST_SummaryStats w połączeniu z GROUP BY
 WITH t AS (
-SELECT b.parish AS parish, st_summarystats(ST_Union(ST_Clip(a.rast,
-b.geom,true))) AS stats
+SELECT b.parish AS parish, st_summarystats(ST_Union(ST_Clip(a.rast,b.geom,true))) AS stats
 FROM rasters.dem AS a, vectors.porto_parishes AS b
 WHERE b.municipality ilike 'porto' and ST_Intersects(b.geom,a.rast)
 group by b.parish
@@ -164,8 +163,15 @@ USING gist (ST_ConvexHull(rast));
 SELECT AddRasterConstraints('abramowicz'::name,
 'tpi30'::name,'rast'::name);
 
---problem do rozwiązania :s
+--problem do rozwiązania
 
+CREATE TABLE abramowicz.tpi30porto as
+WITH porto AS (
+	SELECT a.rast
+	FROM rasters.dem AS a, vectors.porto_parishes AS b
+	WHERE ST_Intersects(a.rast, b.geom) AND b.municipality ILIKE 'porto'
+)
+SELECT ST_TPI(porto.rast,1) as rast FROM porto;
 
 --------------------------------------
 --Algebra map
@@ -204,8 +210,7 @@ VARIADIC userargs text []
 RETURNS double precision AS
 $$
 BEGIN
---RAISE NOTICE 'Pixel Value: %', value [1][1][1];-->For debug
-purposes
+--RAISE NOTICE 'Pixel Value: %', value [1][1][1];-->For debug purposes
 RETURN (value [2][1][1] - value [1][1][1])/(value [2][1][1]+value
 [1][1][1]); --> NDVI calculation!
 END;
@@ -221,7 +226,7 @@ WHERE b.municipality ilike 'porto' and ST_Intersects(b.geom,a.rast)
 SELECT
 r.rid,ST_MapAlgebra(
 r.rast, ARRAY[1,4],
-'schema_name.ndvi(double precision[],
+'abramowicz.ndvi(double precision[],
 integer[],text[])'::regprocedure, --> This is the function!
 '32BF'::text
 ) AS rast
@@ -232,9 +237,6 @@ USING gist (ST_ConvexHull(rast));
 
 SELECT AddRasterConstraints('abramowicz'::name,
 'porto_ndvi2'::name,'rast'::name);
-
---Funkcje TPI
-
 
 --------------------------------------
 --Eksport Danych
@@ -252,13 +254,12 @@ FROM abramowicz.porto_ndvi;
 
 --3) Zapisywanie danych na dysku za pomocą dużego obiektu (large object,lo)
 CREATE TABLE tmp_out AS
-SELECT lo_from_bytea(0,
-ST_AsGDALRaster(ST_Union(rast), 'GTiff', ARRAY['COMPRESS=DEFLATE',
+SELECT lo_from_bytea(0, ST_AsGDALRaster(ST_Union(rast), 'GTiff', ARRAY['COMPRESS=DEFLATE',
 'PREDICTOR=2', 'PZLEVEL=9'])
 ) AS loid
 FROM abramowicz.porto_ndvi;
 ----------------------------------------------
-SELECT lo_export(loid, 'G:\myraster.tiff') --> Save the file in a place
+SELECT lo_export(loid, 'C:\Users\natii\OneDrive\Pulpit\BDP\dane_cw7\myraster.tiff') --> Save the file in a place
 --where the user postgres have access. In windows a flash drive usualy works
 --fine.
 FROM tmp_out;
@@ -268,7 +269,7 @@ FROM tmp_out; --> Delete the large object.
 
 --4) Użycie Gdal
 -- gdal_translate -co COMPRESS=DEFLATE -co PREDICTOR=2 -co ZLEVEL=9
--- PG:"host=localhost port=5432 dbname=bdp_cw7_raster user=postgres
+-- PG:"host=localhost port=5432 dbname=bdp_cw7 user=postgres
 -- password= schema=abramowicz table=porto_ndvi mode=2"
 -- porto_ndvi.tiff
 
@@ -278,38 +279,38 @@ FROM tmp_out; --> Delete the large object.
 --------------------------------------
 
 --Mapfile
-MAP
-NAME 'map'
-SIZE 800 650
-STATUS ON
-EXTENT -58968 145487 30916 206234
-UNITS METERS
-WEB
-METADATA
-'wms_title' 'Terrain wms'
-'wms_srs' 'EPSG:3763 EPSG:4326 EPSG:3857'
-'wms_enable_request' '*'
-'wms_onlineresource'
-'http://54.37.13.53/mapservices/srtm'
-END
-END
-PROJECTION
-'init=epsg:3763'
-END
-LAYER
-NAME srtm
-TYPE raster
-STATUS OFF
-DATA "PG:host=localhost port=5432 dbname='bdp_cw7_raster' user='postgis'
-password='' schema='rasters' table='dem' mode='2'" PROCESSING
-"SCALE=AUTO"
-PROCESSING "NODATA=-32767"
-OFFSITE 0 0 0
-METADATA
-'wms_title' 'srtm'
-END
-END
-END
+-- MAP
+-- NAME 'map'
+-- SIZE 800 650
+-- STATUS ON
+-- EXTENT -58968 145487 30916 206234
+-- UNITS METERS
+-- WEB
+-- METADATA
+-- 'wms_title' 'Terrain wms'
+-- 'wms_srs' 'EPSG:3763 EPSG:4326 EPSG:3857'
+-- 'wms_enable_request' '*'
+-- 'wms_onlineresource'
+-- 'http://54.37.13.53/mapservices/srtm'
+-- END
+-- END
+-- PROJECTION
+-- 'init=epsg:3763'
+-- END
+-- LAYER
+-- NAME srtm
+-- TYPE raster
+-- STATUS OFF
+-- DATA "PG:host=localhost port=5432 dbname='bdp_cw7' user='postgis'
+-- password='' schema='rasters' table='dem' mode='2'" PROCESSING
+-- "SCALE=AUTO"
+-- PROCESSING "NODATA=-32767"
+-- OFFSITE 0 0 0
+-- METADATA
+-- 'wms_title' 'srtm'
+-- END
+-- END
+-- END
 
 
 --------------------------------------
