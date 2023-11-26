@@ -259,7 +259,7 @@ SELECT lo_from_bytea(0, ST_AsGDALRaster(ST_Union(rast), 'GTiff', ARRAY['COMPRESS
 ) AS loid
 FROM abramowicz.porto_ndvi;
 ----------------------------------------------
-SELECT lo_export(loid, 'C:\Users\natii\OneDrive\Pulpit\BDP\dane_cw7\myraster.tiff') --> Save the file in a place
+SELECT lo_export(loid, 'D:\myraster.tiff') --> Save the file in a place
 --where the user postgres have access. In windows a flash drive usualy works
 --fine.
 FROM tmp_out;
@@ -316,6 +316,20 @@ FROM tmp_out; --> Delete the large object.
 --------------------------------------
 --Publikowanie danych przy użyciu GeoServera*
 --------------------------------------
+
+CREATE TABLE public.mosaic (
+    name character varying(254) COLLATE pg_catalog."default" NOT NULL,
+    tiletable character varying(254) COLLATE pg_catalog."default" NOT NULL,
+    minx double precision,
+    miny double precision,
+    maxx double precision,
+    maxy double precision,
+    resx double precision,
+    resy double precision,
+    CONSTRAINT mosaic_pkey PRIMARY KEY (name, tiletable)
+);
+
+insert into mosaic (name,tiletable) values ('mosaicpgraster','rasters.dem');
 
 --rozwiązanie problemu B)
 create table abramowicz.tpi30_porto as
