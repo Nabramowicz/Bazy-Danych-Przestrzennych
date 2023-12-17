@@ -1,0 +1,4 @@
+CREATE TABLE ST_UNION AS
+SELECT ST_Union(rast) FROM "Exports"
+
+SELECT * FROM ST_Union
